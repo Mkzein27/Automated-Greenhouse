@@ -6,11 +6,14 @@ ESP32-based automated greenhouse control system using ESP-IDF framework.
 
 ### Mohamed Khaled
 **Responsible for:**
--
+ - 
 
 ### Abdelrahman Yasser
 **Responsible for:**
--
+ - 
+### Ibrahim Nour
+**Responsible for:**
+ - 
 
 
 ## Building
