@@ -11,8 +11,7 @@ Sensor modules and data filtration
 
 ### Abdelrahman Yasser
 **Responsible for:**
-Main Code 
-Control Logic modules
+Main Code and Control Logic modules
  - 
 ### Ibrahim Nour
 **Responsible for:**
