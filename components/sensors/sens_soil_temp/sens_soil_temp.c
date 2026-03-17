@@ -6,6 +6,7 @@
 #include "esp_timer.h"
 #include <string.h>
 #include <math.h>
+#include "utilities/timing_utils.h"
 
 static const char *TAG = "soil_temp";
 
@@ -21,40 +22,25 @@ static const char *TAG = "soil_temp";
 #define ONEWIRE_READ_RECOVERY_TIME  53
 
 // DS18B20 Commands
-#define DS18B20_RESET = 0xCC //reset the DS18B20 device.
-#define DS18B20_SKIP_ROM = 0xCC //used when only one DS18B20 is on the one-wire bus.
-#define DS18B20_MATCH_ROM = 0x55 //used when communicating with a specific DS18B20 device on the one-wire bus. 
-#define DS18B20_SEARCH_ROM = 0xF0 //search for all DS18B20 devices on the one-wire bus.
-#define DS18B20_READ_SCRATCHPAD = 0xBE //read the scratchpad memory of the DS18B20 device, which contains temperature data and configuration settings.
-#define DS18B20_WRITE_SCRATCHPAD = 0x4E //write to the scratchpad memory of the DS18B20 device, typically for setting configuration parameters.
-#define DS18B20_COPY_SCRATCHPAD = 0x48 //copy the contents of the scratchpad memory to the EEPROM of the DS18B20 device, making the settings permanent.
-#define DS18B20_RECALL_EEPROM = 0xB8 //recall the EEPROM contents back to the scratchpad memory of the DS18B20 device.
-#define DS18B20_ALARM_SEARCH = 0xEC //search for DS18B20 devices that have triggered an alarm condition based on their temperature thresholds.
-#define DS18B20_CONVERT_T = 0x44 //initiate a temperature conversion on the DS18B20. measure temperature & store result in  scratchpad memory
-#define DS18B20_RESUME = 0xC2 //resume communication with DS18B20 device after a reset or power-up, allowing sending commands for full ROM search 
+#define DS18B20_RESET 0xCC //reset the DS18B20 device.
+#define DS18B20_SKIP_ROM 0xCC //used when only one DS18B20 is on the one-wire bus.
+#define DS18B20_MATCH_ROM 0x55 //used when communicating with a specific DS18B20 device on the one-wire bus. 
+#define DS18B20_SEARCH_ROM 0xF0 //search for all DS18B20 devices on the one-wire bus.
+#define DS18B20_READ_SCRATCHPAD 0xBE //read the scratchpad memory of the DS18B20 device, which contains temperature data and configuration settings.
+#define DS18B20_WRITE_SCRATCHPAD 0x4E //write to the scratchpad memory of the DS18B20 device, typically for setting configuration parameters.
+#define DS18B20_COPY_SCRATCHPAD 0x48 //copy the contents of the scratchpad memory to the EEPROM of the DS18B20 device, making the settings permanent.
+#define DS18B20_RECALL_EEPROM 0xB8 //recall the EEPROM contents back to the scratchpad memory of the DS18B20 device.
+#define DS18B20_ALARM_SEARCH 0xEC //search for DS18B20 devices that have triggered an alarm condition based on their temperature thresholds.
+#define DS18B20_CONVERT_T 0x44 //initiate a temperature conversion on the DS18B20. measure temperature & store result in  scratchpad memory
+#define DS18B20_RESUME 0xC2 //resume communication with DS18B20 device after a reset or power-up, allowing sending commands for full ROM search 
 
+#define SOIL_TEMP_GPIO 
 // Static variables
-static bool sensor_initialized = false;
+static bool sensor_initialized = false; 
 static uint8_t sensor_rom[8] = {0};         // Store sensor ROM code
 
-// ==================================================
-// LOW-LEVEL ONEWIRE FUNCTIONS
-// ==================================================
-
-/**
- * @brief Precise microsecond delay
- */
-static inline void delay_us(uint32_t us) {
-    uint64_t start = esp_timer_get_time();
-    while ((esp_timer_get_time() - start) < us) {
-        // Busy wait
-    }
-}
-
-/**
- * @brief OneWire reset pulse
- * @return true if device present, false otherwise
- */
+//OneWire reset pulse
+//return true if device present, false otherwise
 static bool onewire_reset(void) {
     bool presence;
     
