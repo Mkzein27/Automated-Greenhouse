@@ -34,10 +34,11 @@ static const char *TAG = "soil_temp";
 #define DS18B20_CONVERT_T 0x44 //initiate a temperature conversion on the DS18B20. measure temperature & store result in  scratchpad memory
 #define DS18B20_RESUME 0xC2 //resume communication with DS18B20 device after a reset or power-up, allowing sending commands for full ROM search 
 
-#define SOIL_TEMP_GPIO 
+#define SOIL_TEMP_GPIO 4
+#define SOIL_TEMP_RESOLUTION 12
 // Static variables
 static bool sensor_initialized = false; 
-static uint8_t sensor_rom[8] = {0};         // Store sensor ROM code
+static uint8_t sensor_rom[8] = {0}; // Store sensor ROM code
 
 //OneWire reset pulse
 //return true if device present, false otherwise
@@ -62,9 +63,7 @@ static bool onewire_reset(void) {
     return presence;
 }
 
-/**
- * @brief Write a single bit on OneWire bus
- */
+// Write a single bit on OneWire bus
 static void onewire_write_bit(uint8_t bit) {
     if (bit) {
         // Write '1' bit
@@ -83,9 +82,7 @@ static void onewire_write_bit(uint8_t bit) {
     }
 }
 
-/**
- * @brief Read a single bit from OneWire bus
- */
+//Read a single bit from OneWire bus
 static uint8_t onewire_read_bit(void) {
     uint8_t bit;
     
@@ -105,9 +102,7 @@ static uint8_t onewire_read_bit(void) {
     return bit;
 }
 
-/**
- * @brief Write a byte on OneWire bus
- */
+//Write a byte on OneWire bus
 static void onewire_write_byte(uint8_t data) {
     for (int i = 0; i < 8; i++) {
         onewire_write_bit(data & 0x01);
@@ -115,9 +110,7 @@ static void onewire_write_byte(uint8_t data) {
     }
 }
 
-/**
- * @brief Read a byte from OneWire bus
- */
+// Read a byte from OneWire bus
 static uint8_t onewire_read_byte(void) {
     uint8_t data = 0;
     
@@ -131,13 +124,9 @@ static uint8_t onewire_read_byte(void) {
     return data;
 }
 
-// ==================================================
 // DS18B20 SPECIFIC FUNCTIONS
-// ==================================================
 
-/**
- * @brief Calculate CRC8 for DS18B20 data validation
- */
+// Calculate CRC8 for DS18B20 data validation
 static uint8_t calculate_crc8(const uint8_t *data, uint8_t len) {
     uint8_t crc = 0;
     
@@ -156,31 +145,27 @@ static uint8_t calculate_crc8(const uint8_t *data, uint8_t len) {
     return crc;
 }
 
-/**
- * @brief Comparison function for qsort (median filter)
- */
+// Comparison function for qsort (median filter)
 static int compare_floats(const void *a, const void *b) {
     float fa = *(const float*)a;
     float fb = *(const float*)b;
-    return (fa > fb) - (fa < fb);
+    return (fa > fb) - (fa < fb);// Returns 1 if fa > fb, -1 if fa < fb, 0 if equal
 }
 
-// ==================================================
 // PUBLIC API IMPLEMENTATION
-// ==================================================
-
+// Initialize the soil temperature sensor
 bool soil_temp_init(void) {
     ESP_LOGI(TAG, "Initializing DS18B20 soil temperature sensor on GPIO %d", SOIL_TEMP_GPIO);
     
     // Configure GPIO
     gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << SOIL_TEMP_GPIO),
+        .pin_bit_mask = (1ULL << SOIL_TEMP_GPIO)
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,    // Enable internal pull-up
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE, // Disable pull-down 
         .intr_type = GPIO_INTR_DISABLE,
     };
-    
+    // error handling for GPIO config
     esp_err_t err = gpio_config(&io_conf);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to configure GPIO: %s", esp_err_to_name(err));
@@ -194,7 +179,7 @@ bool soil_temp_init(void) {
         ESP_LOGW(TAG, "No DS18B20 device detected on bus");
         return false;
     }
-    
+    else{
     sensor_initialized = true;
     ESP_LOGI(TAG, "DS18B20 initialized successfully");
     
@@ -202,6 +187,7 @@ bool soil_temp_init(void) {
     soil_temp_set_resolution(SOIL_TEMP_RESOLUTION);
     
     return true;
+    }
 }
 
 bool soil_temp_is_connected(void) {
@@ -345,12 +331,10 @@ soil_temp_reading_t soil_temp_read_filtered(uint8_t num_samples) {
         // Odd number: middle value
         result.temperature = samples[valid_count/2];
     }
-    
     result.valid = true;
     
     ESP_LOGI(TAG, "Filtered temperature: %.2f°C (from %d valid samples)", 
              result.temperature, valid_count);
-    
     return result;
 }
 
@@ -366,20 +350,16 @@ bool soil_temp_set_resolution(uint8_t resolution) {
     }
     
     ESP_LOGI(TAG, "Setting resolution to %d bits", resolution);
-    
     // Reset and write scratchpad
     if (!onewire_reset()) {
         ESP_LOGE(TAG, "Sensor not present");
         return false;
     }
-    
     onewire_write_byte(DS18B20_CMD_SKIP_ROM);
     onewire_write_byte(DS18B20_CMD_WRITE_SCRATCHPAD);
-    
     // Write TH, TL, and configuration registers
     onewire_write_byte(0x00);  // TH (not used)
     onewire_write_byte(0x00);  // TL (not used)
-    
     // Configuration: resolution is in bits 5-6
     // 9-bit: 0x1F, 10-bit: 0x3F, 11-bit: 0x5F, 12-bit: 0x7F
     uint8_t config = ((resolution - 9) << 5) | 0x1F;
@@ -389,12 +369,9 @@ bool soil_temp_set_resolution(uint8_t resolution) {
     if (!onewire_reset()) {
         return false;
     }
-    
     onewire_write_byte(DS18B20_CMD_SKIP_ROM);
     onewire_write_byte(DS18B20_CMD_COPY_SCRATCHPAD);
-    
     vTaskDelay(pdMS_TO_TICKS(10));  // Wait for EEPROM write
-    
     ESP_LOGI(TAG, "Resolution set successfully");
     return true;
 }
@@ -403,10 +380,8 @@ bool soil_temp_get_rom_code(uint8_t *rom_code) {
     if (!sensor_initialized || rom_code == NULL) {
         return false;
     }
-    
     // Simple implementation: just copy if we've stored it
     // For a full implementation, you'd do a ROM search
     memcpy(rom_code, sensor_rom, 8);
-    
     return true;
 }
