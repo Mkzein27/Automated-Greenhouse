@@ -23,7 +23,7 @@ Protocol: OneWire (Dallas/Maxim)
 #define SOIL_TEMP_MIN          -5.0         // Minimum valid temperature (°C)
 #define SOIL_TEMP_MAX          60.0         // Maximum valid temperature (°C)
 
-// Data structure for soil temperature reading
+// Data structure for soil temperature reading stores temp, validity, timestamp and err
 typedef struct {
     float temperature;          // Temperature in Celsius
     bool valid;                 // Reading validity flag
@@ -31,10 +31,10 @@ typedef struct {
     char error_message[64];     // Error description if invalid
 } soil_temp_reading_t;
 
-/**Initialize the soil temperature sensor
- * Configures GPIO pin for OneWire communication and
- * searches for DS18B20 sensor on the bus.
- * return true if initialization successful, false otherwise
+/*Initialize the soil temperature sensor
+ Configures GPIO pin for OneWire communication and
+ searches for DS18B20 sensor on the bus.
+ return true if initialization successful, false otherwise
  */
 bool soil_temp_init(void);
 
@@ -45,37 +45,31 @@ bool soil_temp_init(void);
  */
 soil_temp_reading_t soil_temp_read(void);
 
-/**
- * Read temperature with median filtering
- * Takes multiple samples and returns the median value to
- * filter out noise and transient spikes.
- * @param num_samples Number of samples to take (default: SOIL_TEMP_SAMPLES)
- * @return soil_temp_reading_t structure with filtered temperature
+/*
+ Read temperature with median filtering
+ Takes multiple samples and returns the median value to
+ filter out noise and transient spikes.
+ num_samples Number of samples to take (default: SOIL_TEMP_SAMPLES)
+ soil_temp_reading_t structure with filtered temperature
  */
 soil_temp_reading_t soil_temp_read_filtered(float num_samples);
 
 /**
- * @brief Check if sensor is connected
- * 
- * Performs a OneWire search to verify DS18B20 is on the bus.
- * 
- * @return true if sensor detected, false otherwise
+ Check if sensor is connected
+ Performs a OneWire search to verify DS18B20 is on the bus.
+ returns true if sensor detected, false otherwise
  */
 bool soil_temp_is_connected(void);
 
-/**
- * @brief Set sensor resolution
- * 
- * @param resolution Resolution in bits (9, 10, 11, or 12)
- * @return true if successful, false if invalid resolution
+/*brief Set sensor resolution
+param resolution Resolution in bits (9, 10, 11, or 12)
+return true if successful, false if invalid resolution
  */
 bool soil_temp_set_resolution(uint8_t resolution);
 
-/**
- * @brief Get sensor ROM code (64-bit unique ID)
- * 
- * @param rom_code Pointer to 8-byte array to store ROM code
- * @return true if successful, false if sensor not found
+/*Get sensor ROM code (64-bit unique ID)
+rom_code Pointer to 8-byte array to store ROM code
+true if successful, false if sensor not found
  */
 bool soil_temp_get_rom_code(uint8_t *rom_code);
 
