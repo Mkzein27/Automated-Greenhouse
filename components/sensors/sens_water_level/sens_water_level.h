@@ -12,7 +12,7 @@
  GPIO Pin: 18 (configurable)
  */
 // Configuration
-#define WATER_LEVEL_FLOAT_GPIO  18      // GPIO pin for float switch
+#define WATER_LEVEL_FLOAT_GPIO  33      // GPIO pin for float switch
 #define WATER_LEVEL_DEBOUNCE_MS 50      // Debounce time (switch bounce)
 
 // Reading structure
@@ -38,3 +38,4 @@ water_level_reading_t water_level_float_read(void);
  return water_level_reading_t with debounced state
  */
 water_level_reading_t water_level_float_read_debounced(void);
+#endif

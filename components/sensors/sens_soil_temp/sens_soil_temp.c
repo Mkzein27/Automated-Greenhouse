@@ -36,6 +36,7 @@ static const char *TAG = "soil_temp";
 
 #define SOIL_TEMP_GPIO 4
 #define SOIL_TEMP_RESOLUTION 12
+#define SOIL_TEMP_SAMPLES 5
 // Static variables
 static bool sensor_initialized = false; 
 static uint8_t sensor_rom[8] = {0}; // Store sensor ROM code
@@ -179,7 +180,6 @@ bool soil_temp_init(void) {
         ESP_LOGW(TAG, "No DS18B20 device detected on bus");
         return false;
     }
-    else{
     sensor_initialized = true;
     ESP_LOGI(TAG, "DS18B20 initialized successfully");
     
@@ -187,7 +187,7 @@ bool soil_temp_init(void) {
     soil_temp_set_resolution(SOIL_TEMP_RESOLUTION);
     
     return true;
-    }
+    
 }
 
 bool soil_temp_is_connected(void) {
@@ -256,6 +256,7 @@ soil_temp_reading_t soil_temp_read(void) {
     
     // Extract temperature from bytes 0 and 1
     int16_t raw_temp = (scratchpad[1] << 8) | scratchpad[0];
+    // converting raw to decimal point by shifting right 4 bits (divide by 16)
     float temperature = (float)raw_temp / 16.0;
     
     // Validate range
@@ -276,17 +277,11 @@ soil_temp_reading_t soil_temp_read(void) {
 }
 
 soil_temp_reading_t soil_temp_read_filtered(uint8_t num_samples) {
-    if (num_samples == 0) {
-        num_samples = SOIL_TEMP_SAMPLES;
-    }
-    
-    if (num_samples > 20) {
-        num_samples = 20;  // Cap at reasonable maximum
-    }
+    num_samples = SOIL_TEMP_SAMPLES;
     
     ESP_LOGI(TAG, "Reading %d samples for median filtering", num_samples);
     
-    float samples[20];
+    float samples[SOIL_TEMP_SAMPLES ];
     uint8_t valid_count = 0;
     
     // Collect samples
@@ -294,9 +289,9 @@ soil_temp_reading_t soil_temp_read_filtered(uint8_t num_samples) {
         soil_temp_reading_t reading = soil_temp_read();
         
         if (reading.valid) {
-            samples[valid_count++] = reading.temperature;
+            samples[valid_count] = reading.temperature;
+            valid_count++;
         }
-        
         // Small delay between samples
         if (i < num_samples - 1) {
             vTaskDelay(pdMS_TO_TICKS(100));
@@ -307,12 +302,12 @@ soil_temp_reading_t soil_temp_read_filtered(uint8_t num_samples) {
         .temperature = 0.0,
         .valid = false,
         .timestamp = esp_timer_get_time() / 1000,
-        .error_message = ""
+        .error_message = "no valid samples obtained"
     };
     
     if (valid_count == 0) {
         snprintf(result.error_message, sizeof(result.error_message), 
-                 "No valid samples obtained");
+                 "All %d samples invalid", num_samples);
         ESP_LOGE(TAG, "%s", result.error_message);
         return result;
     }
@@ -380,8 +375,6 @@ bool soil_temp_get_rom_code(uint8_t *rom_code) {
     if (!sensor_initialized || rom_code == NULL) {
         return false;
     }
-    // Simple implementation: just copy if we've stored it
-    // For a full implementation, you'd do a ROM search
     memcpy(rom_code, sensor_rom, 8);
     return true;
 }
